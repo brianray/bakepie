@@ -6,7 +6,12 @@ from pie_logger import get_logger
 log = get_logger()
 
 def complex_runner(func, pies, pie_count=3, **kwargs):
-    "Run pie (object or list) pie_count times."
+    """Run pie (object or list) pie_count times.
+    func: the function to send to run. like bake_it
+    Pies: a Pie or list of Pies to run
+    pie_count: multipy the the pies pie_count times
+    **kwargs, any arguments to send to func    
+    """
     
     oven_q = Queue()
     
