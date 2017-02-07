@@ -129,13 +129,21 @@ class Factory:
         self.callbacks = defaultdict(list)
         self.known_callback_methods = ('bake', 'reload', 'oven', 'restock')
 
-    def fill_pantry(self, pie, times=5):
+    def fill_pantry(self, pies, times=5):
         " Given a pie, duplicate items times 'times', adds to self.inventory"
         log.debug("restock")
-        inventory = copy.copy(pie.shopping_list)
-        for item in inventory:
-            item.qty *= times
-            self.inventory.append(item)
+
+        if type(pies) != list:
+            pies = [pies, ]
+        key_item_for_inventory = self.key_item_for_inventory()
+        for pie in pies:
+            inventory = copy.copy(pie.shopping_list)
+            for item in inventory:
+                try:
+                    key_item_for_inventory[item.item].qty *= times
+                except KeyError:
+                    item.qty *= times
+                    self.inventory.append(item)
 
     def get_totals(self):
         out = {}
@@ -276,7 +284,10 @@ def run_factory(test=False):
 
     def restock_callback(callback_app, message):
         callback_app.logger.info("message {}".format(message))
-        callback_app.factory.fill_pantry(pie, times=1)
+        pie2 = ApplePie(name="Prototype Apple Pie",
+                        recipe_path="misc/ApplePie.txt")
+        pie2.process_recipe()
+        callback_app.factory.fill_pantry(pie2, times=2)
         totals = callback_app.factory.get_totals()
         return dict(msg="restocked",
                     totals=totals)
