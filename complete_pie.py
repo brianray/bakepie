@@ -284,16 +284,22 @@ def run_factory(test=False):
     factory.add_callback("restock", restock_callback)
 
     if test:
-        factory.run_factory_test()
+        return factory.run_factory_test()
     else:
-        factory.run_factory()
+        return factory.run_factory()
 
 
 def run_detached():
     import subprocess
     return subprocess.Popen([sys.executable, os.path.realpath(__file__)],
                             stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
+                            stderr=subprocess.STDOUT,
+                            shell=True)
+
+
+def stop_detached(process):
+    import signal
+    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
 
 base_class = object
