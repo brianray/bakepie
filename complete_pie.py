@@ -219,7 +219,8 @@ class Factory:
         return jupy.run_flask_socket_app(factory=self)
 
     def run_factory_test(self):
-        pass
+        import mock_factory
+        mock_factory.run(factory=self, count=4)
 
 
 def run_factory(test=False):
