@@ -120,7 +120,8 @@ class RaseberryPie(Pie):
     image_key = "C"
 
 
-class Factory:
+class FactoryConveyorBelt:
+    "Handles holding state for pies and adding callbacks to handle operations"
     def __init__(self):
         self.pies = {}
         self.oven_heat_time = 10000
@@ -130,7 +131,7 @@ class Factory:
         self.known_callback_methods = ('bake', 'reload', 'oven', 'restock')
 
     def fill_pantry(self, pies, times=5):
-        " Given a pie, duplicate items times 'times', adds to self.inventory"
+        " Given a list of 'pies', duplicate items times 'times', adds to self.inventory"
         log.debug("restock")
 
         if type(pies) != list:
@@ -146,6 +147,7 @@ class Factory:
                     self.inventory.append(item)
 
     def get_totals(self):
+        "shows totals a s pretty ascii-format table"
         out = {}
         for x in self.inventory:
             if x.item in out:
@@ -156,12 +158,14 @@ class Factory:
 
     @staticmethod
     def truncate(input, length=25):
+        "just add '...' after truncating a string at 'length'"
         if len(input) > length:
             return input[:length] + "..."
         return input
 
     @staticmethod
     def humanize(frac):
+        "conert a fraction to wholes and fractions when approriate"
         whole = " "
         part = "{}/{}".format(frac.numerator, frac.denominator)
         if frac.numerator > frac.denominator:
@@ -172,13 +176,15 @@ class Factory:
                 part = "{}/{}".format(frac.numerator, frac.denominator)
         return "{} {}".format(whole, part)
 
-    def pretty_display_ingredients(self, ingredients):
+    @staticmethod
+    def pretty_display_ingredients(ingredients):
+        "given 'ingredients' display as pretty table"
         out = defaultdict(list)
         for ingr in ingredients:
-            as_str = "{} {} of {}".format(self.humanize(ingr.qty),
+            as_str = "{} {} of {}".format(FactoryConveyorBelt.humanize(ingr.qty),
                                           ingr.unit,
                                           ingr.item)
-            out[ingr.name].append(self.truncate(as_str))
+            out[ingr.name].append(FactoryConveyorBelt.truncate(as_str))
         row_size = max(map(len, out.values()))
         for row in out.values():
             row += [""] * (row_size - len(row))
@@ -188,13 +194,14 @@ class Factory:
         return table.get_string()
 
     def key_item_for_inventory(self):
+        "give current inventory as `dict`"
         out = {}
         for ingr in self.inventory:
             out[ingr.item] = ingr
-        log.debug(out)
         return out
 
     def add_pie(self, pie):
+        "add a single pie to the FactoryConveyorBelt"
         self.pies[pie.unique_pie_id] = pie
 
         # calculate ingredients
@@ -205,39 +212,43 @@ class Factory:
             inventory_by_key[ingrd.item].qty -= ingrd.qty
 
     def add_pie_order(self, pie, qty):
+        "add a bunch of pies to FactoryConveyorBelt"
         pie.process_recipe()
         self.pie_orders_qty[pie.unique_pie_id] = qty
         self.add_pie(pie)
 
     def add_callback(self, method, func):
+        "add a callback function for given 'method'"
         if method not in self.known_callback_methods:
             raise Exception("unkown callback method: {}".format(method))
         self.callbacks[method].append(func)
 
-    def run_factory(self):
+    def run_belt(self):
+        "run the FactoryConveyorBelt in production"
         import jupy
-        return jupy.run_flask_socket_app(factory=self)
+        return jupy.run_flask_socket_app(belt=self)
 
-    def run_factory_test(self):
-        import mock_factory
-        mock_factory.run(factory=self, count=4)
+    def run_belt_test(self):
+        "simulate running the FactoryConveyorBelt"
+        import mock_browser
+        mock_browser.simulate(self, count=4)
 
 
-def run_factory(test=False):
-    factory = Factory()
+def run_belt(test=False):
+    belt = FactoryConveyorBelt()
     pie = ApplePie(name="Prototype Apple Pie", recipe_path="misc/ApplePie.txt")
     pie.process_recipe()
-    factory.fill_pantry(pie, times=10)
+    belt.fill_pantry(pie, times=10)
     if test:
-        factory.add_pie_order(pie, 3)
+        belt.add_pie_order(pie, 3)
         log.debug("totals: ")
-        log.debug(factory.get_totals())
+        log.debug(belt.get_totals())
 
     def echo_callback(callback_app, message):
         callback_app.logger.info("echo {}".format(message))
 
-    for method in factory.known_callback_methods:
-        factory.add_callback(method, echo_callback)
+    for method in belt.known_callback_methods:
+        belt.add_callback(method, echo_callback)
 
     names = ["Bob", "Sue", "Pap", "Karen", "Brian", "Greg"]
 
@@ -256,23 +267,23 @@ def run_factory(test=False):
                        recipe_path="misc/ApplePie.txt")
         pie.process_recipe()
         try:
-            callback_app.factory.add_pie(pie)
+            callback_app.belt.add_pie(pie)
         except Exception as e:
             return dict(error=str(e))
 
-        totals = callback_app.factory.get_totals()
+        totals = callback_app.belt.get_totals()
         return dict(image_key=pie.image_key,
                     totals=totals,
                     name=pie.name,
                     unique_pie_id=pie.unique_pie_id)
 
-    factory.add_callback("bake", bake_callback)
+    belt.add_callback("bake", bake_callback)
 
     def oven_callback(callback_app, message):
         callback_app.logger.info("message {}".format(message))
-        pie = callback_app.factory.pies[message['unique_pie_id']]
-        total_time = message['heat_time'] + callback_app.factory.oven_heat_time
-        totals = callback_app.factory.get_totals()
+        pie = callback_app.belt.pies[message['unique_pie_id']]
+        total_time = message['heat_time'] + callback_app.belt.oven_heat_time
+        totals = callback_app.belt.get_totals()
         return dict(image_key=pie.image_key,
                     totals=totals,
                     oven_msg="Oven Heating",
@@ -281,24 +292,24 @@ def run_factory(test=False):
                     total_time=total_time,
                     unique_pie_id=pie.unique_pie_id)
 
-    factory.add_callback("oven", oven_callback)
+    belt.add_callback("oven", oven_callback)
 
     def restock_callback(callback_app, message):
         callback_app.logger.info("message {}".format(message))
         pie2 = ApplePie(name="Prototype Apple Pie",
                         recipe_path="misc/ApplePie.txt")
         pie2.process_recipe()
-        callback_app.factory.fill_pantry(pie2, times=2)
-        totals = callback_app.factory.get_totals()
+        callback_app.belt.fill_pantry(pie2, times=2)
+        totals = callback_app.belt.get_totals()
         return dict(msg="restocked",
                     totals=totals)
 
-    factory.add_callback("restock", restock_callback)
+    belt.add_callback("restock", restock_callback)
 
     if test:
-        return factory.run_factory_test()
+        return belt.run_belt_test()
     else:
-        return factory.run_factory()
+        return belt.run_belt()
 
 
 def run_detached():
@@ -350,9 +361,9 @@ class JupyDisplay(base_class):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Complete pie factory')
+    parser = argparse.ArgumentParser(description='Complete pie belt')
     parser.add_argument(
-        '--test', action="store_true", help='test the factory code',)
+        '--test', action="store_true", help='test the belt code',)
     args = parser.parse_args()
     test = False
     if args.test:
@@ -360,4 +371,4 @@ if __name__ == "__main__":
         test = True
     else:
         log.info("running in single server mode")
-    run_factory(test=test)
+    run_belt(test=test)
