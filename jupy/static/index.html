@@ -1,0 +1,287 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>jupy</title>
+        <script src="//cdn.jsdelivr.net/phaser/2.5.0/phaser.min.js"></script>
+        <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+    </head>
+    <body>
+
+    <script type="text/javascript">
+
+
+    window.onload = function() {
+        var socket = io.connect('{{ url }}');
+        
+        var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+
+        var pie_queue = [];
+        var oven_queue = [];
+
+
+        var text;
+        var oven_text;
+        var queue_text;
+        var oven_queue_text;
+
+        var timer = 0;
+        var oven_warm_at = -1;
+        var oven_warm = false;
+
+        var pie_count = 0
+
+        function preload () {
+            
+            
+            // 8.1.1  Preload
+            
+            game.load.image('pie_A', 'static/Pie_single_A.png');
+            game.load.image('pie_B', 'static/Pie_single_B.png');
+            game.load.image('pie_C', 'static/Pie_single_C.png');
+            game.load.image('pie_AX', 'static/Pie_single_AX.png');
+            game.load.image('pie_BX', 'static/Pie_single_BX.png');
+            game.load.image('pie_CX', 'static/Pie_single_CX.png');
+
+            game.load.image('background', 'static/background.png');
+            game.load.image('conveyor2', 'static/Sketch_pie_Conveyor_fin.png');
+            game.load.image('apple_butt', 'static/Group 1.png');
+            game.load.image('cherry_butt', 'static/Group 2.png');
+            game.load.image('raseberry_butt', 'static/Group 3.png');            
+            game.load.image('restock_butt', 'static/Group 4.png'); 
+            game.load.image('txt_box', 'static/txtbox.png');
+
+        }
+
+        function create () {
+
+            // 8.1.2 Create
+            background = game.add.sprite(0, 0, 'background');
+            conveyor2 = game.add.sprite(0, 0, 'conveyor2');
+
+            apple_butt = game.add.sprite(20, 20, 'apple_butt');
+            apple_butt.scale.setTo(.5, .5);
+            apple_butt.inputEnabled = true;
+            apple_butt.events.onInputDown.add(click_apple_butt, this);
+
+            cherry_butt = game.add.sprite(20, 60, 'cherry_butt');
+            cherry_butt.scale.setTo(.5, .5);
+            cherry_butt.inputEnabled = true;
+            cherry_butt.events.onInputDown.add(click_cherry_butt, this);
+  
+            raseberry_butt = game.add.sprite(20, 100, 'raseberry_butt');
+            raseberry_butt.scale.setTo(.5, .5);
+            raseberry_butt.inputEnabled = true;
+            raseberry_butt.events.onInputDown.add(click_raseberry_butt, this);
+
+            restock_butt = game.add.sprite(20, 180, 'restock_butt');
+            restock_butt.scale.setTo(.5, .5);
+            restock_butt.inputEnabled = true;
+            restock_butt.events.onInputDown.add(click_restock_butt, this);
+
+            var style = { font: "13px Arial", fill: "#ff0000", 
+                          boundsAlignH: "center", boundsAlignV: "middle" };
+
+            oven_text = game.add.text(490, 480, "", style);
+
+            var style = { font: "8px courier", fill: "#000",
+                          boundsAlignH: "center", boundsAlignV: "middle" };
+            text = game.add.text(160, 10, "", style);
+
+            // bake queue
+            var bar = game.add.graphics();
+            bar.beginFill(0x0033ff, 0.1);
+            bar.drawRect(160, 160, 130, 90);
+            var style = { font: "10px Arial", fill: "#000",
+                          boundsAlignH: "center", boundsAlignV: "middle" };
+            queue_text = game.add.text(170, 170, "", style);
+
+            // oven queue
+            var bar = game.add.graphics();
+            bar.beginFill(0x0099ff, 0.1);
+            bar.drawRect(310, 160, 130, 90);
+
+            var style = { font: "10px Arial", fill: "#000",
+                          boundsAlignH: "center", boundsAlignV: "middle" };
+            oven_queue_text = game.add.text(320, 170, "", style);
+
+            var style = { font: "16px Arial", fill: "#0f0",
+                          boundsAlignH: "center", boundsAlignV: "middle" };
+            done_text = game.add.text(700, 10, "0 pies", style);
+
+        }
+
+        // 8.1.3 Handlers
+        
+        function click_apple_butt() {
+            console.log("callback apple");       
+            socket.emit('callback', {action: 'bake', baketype: 'apple'});
+        }
+        function click_cherry_butt() {
+            console.log("callback cherry");       
+            socket.emit('callback', {action: 'bake', baketype: 'cherry'});
+        }
+        function click_raseberry_butt() {
+            console.log("callback raseberry");       
+            socket.emit('callback', {action: 'bake', baketype: 'raseberry'});
+        }
+        function click_restock_butt() {
+            console.log("callback restock");       
+            socket.emit('callback', {action: 'restock'});
+        }
+        
+        
+        function update_pie_queue() {
+            var pie_queue_text = '';
+            var arrayLength = pie_queue.length;
+            for (var i = 0; i < arrayLength; i++) {
+                pie = pie_queue[i];
+                pie_queue_text += pie.name;
+                pie_queue_text += "\n";
+
+            }
+            queue_text.setText(pie_queue_text);
+
+            pie_queue_text = '';
+            var arrayLength = oven_queue.length;
+            for (var i = 0; i < arrayLength; i++) {
+                pie = oven_queue[i];
+                pie_queue_text += pie.name;
+                pie_queue_text += "\n";
+
+            }
+            oven_queue_text.setText(pie_queue_text);
+
+            done_text.setText(pie_count+" pies");
+        }
+
+        
+        // 8.1.4 Create
+        socket.on('on_connect', function(data) {
+            if (text)
+                text.setText(data.totals);
+        });
+
+        socket.on('do_bake', function(data) {
+            if (data.error) {
+                alert("error: " + data.error);
+                return;
+            }
+            console.log("do_bake");              
+            var pie_id = "pie_"+data.image_key;
+            pie = game.add.sprite(150, 340, pie_id); 
+            pie.scale.setTo(.3, .3);
+            pie.unique_pie_id = data.unique_pie_id;
+            pie.total_time = data.total_time;
+            pie.name = data.name;
+            pie_queue.push(pie);
+            update_pie_queue();
+            text.setText(data.totals);
+        });
+
+        socket.on('do_oven', function(data) {
+            console.log("do_oven");  
+            oven_text.setText(data.oven_msg);
+            var pie_id = "pie_"+data.image_key+"X";
+            pie = game.add.sprite(640, 210, pie_id); 
+            pie.scale.setTo(.3, .3);
+            pie.visible = false;
+            pie.baking = false;
+            pie.name = data.name;
+            oven_warm_at = data.total_time;
+            console.log("time: " + game.time.now + " to:" + oven_warm_at);
+            pie.unique_pie_id = data.unique_pie_id;
+            pie.bake_time = game.time.now + data.bake_time;
+            oven_queue.push(pie);
+            update_pie_queue();
+        });
+
+
+        socket.on('do_restock', function(data) {
+            console.log("do_restock");
+            text.setText(data.totals);
+        });
+
+
+        
+        
+        function update() {
+
+            // Animate Pie Queue
+            var arrayLength = pie_queue.length;
+            for (var i = 0; i < arrayLength; i++) {
+                pie = pie_queue[i];
+                if (!pie)
+                    continue;
+                pie.x += 2;
+                if (pie.x > 340)
+                {
+                    console.log("callback oven");
+                    socket.emit('callback', {action: 'oven', 
+                                             unique_pie_id: pie.unique_pie_id,
+                                             heat_time: game.time.now})
+                    pie.destroy();
+                    pie_queue.splice(i, 1);
+                    update_pie_queue();
+                    arrayLength -= 1;
+                    
+                }
+                
+            }
+
+
+            // Oven heated?
+            if (!oven_warm && oven_warm_at != -1 && game.time.now > oven_warm_at)
+            {
+                oven_text.setText('');
+                oven_text.visible = false;
+                oven_warm = true;
+            } else if (!oven_warm && oven_text.valueOf().text != '') {
+                // Blink text 
+                timer += game.time.elapsed; // ms
+
+                if (timer >= 1000  && oven_text) {
+                    timer -= 1000;
+                    oven_text.visible = !oven_text.visible;
+                    console.log("warming: to: " + game.time.now+ " from: "+oven_warm_at);
+                }
+            }
+
+
+            if (oven_warm)
+            {
+                // Animate Pie Oven
+                var arrayLength = oven_queue.length;
+                for (var i = 0; i < arrayLength; i++) {
+                    pie = oven_queue[i];
+                    if (!pie)
+                        continue;
+                    // is baking
+                    if (pie.bake_time > game.time.now)
+                    {
+                        pie.baking = true;
+                        continue;
+                    }
+                    // it's done
+                    pie.visible = true;
+                    pie.x += 2;
+                    if (pie.x > 800)
+                    {
+                        pie.destroy();
+                        oven_queue.splice(i, 1);
+                        arrayLength -= 1;
+                        pie_count += 1;
+                        update_pie_queue();
+                    }
+                    
+                }
+            }
+        }
+
+   
+    };
+
+    </script>
+
+    </body>
+</html>

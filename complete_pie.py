@@ -1,3 +1,4 @@
+
 import uuid
 import copy
 import sys
@@ -357,8 +358,16 @@ class JupyDisplay(base_class):
     def _repr_html_(self):
         return self.embed_code
 
+    
+jupyter = False    
+try:
+    __IPYTHON__
+    jupyter = True
+except NameError:
+    pass
 
-if __name__ == "__main__":
+
+if __name__ == "__main__" and not jupyter:
     import argparse
 
     parser = argparse.ArgumentParser(description='Complete pie belt')
