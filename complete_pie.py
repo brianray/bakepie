@@ -317,8 +317,7 @@ def run_detached():
     import subprocess
     return subprocess.Popen([sys.executable, os.path.realpath(__file__)],
                             stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            shell=True)
+                            stderr=subprocess.STDOUT)
 
 
 def stop_detached(process):
