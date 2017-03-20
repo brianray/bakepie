@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>jupy</title>
+        <script src="//cdn.jsdelivr.net/phaser/2.5.0/phaser.min.js"></script>
+        <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+    </head>
+    <body>
+
+    <script type="text/javascript">
+
+
+    window.onload = function() {
+        var socket = io.connect('{{ url }}');
+        
+        var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+
+        var pie_queue = [];
+        var oven_queue = [];
+
+
+        var text;
+        var oven_text;
+        var queue_text;
+        var oven_queue_text;
+
+        var timer = 0;
+        var oven_warm_at = -1;
+        var oven_warm = false;
+
+        var pie_count = 0
+
+        function preload () {
+            
+            
+            // 8.1.1  Preload
+            
+        }
+
+        function create () {
+
+            // 8.1.2 Create
+         
+        }
+
+        // 8.1.3 Handlers
+        
+       
+        
+        
+        
+        function update_pie_queue() {
+            var pie_queue_text = '';
+            var arrayLength = pie_queue.length;
+            for (var i = 0; i < arrayLength; i++) {
+                pie = pie_queue[i];
+                pie_queue_text += pie.name;
+                pie_queue_text += "\n";
+
+            }
+            queue_text.setText(pie_queue_text);
+
+            pie_queue_text = '';
+            var arrayLength = oven_queue.length;
+            for (var i = 0; i < arrayLength; i++) {
+                pie = oven_queue[i];
+                pie_queue_text += pie.name;
+                pie_queue_text += "\n";
+
+            }
+            oven_queue_text.setText(pie_queue_text);
+
+            done_text.setText(pie_count+" pies");
+        }
+
+        
+        // 8.1.4 Create
+
+        
+        
+        
+        
+        function update() {
+
+            // Animate Pie Queue
+            var arrayLength = pie_queue.length;
+            for (var i = 0; i < arrayLength; i++) {
+                pie = pie_queue[i];
+                if (!pie)
+                    continue;
+                pie.x += 2;
+                if (pie.x > 340)
+                {
+                    console.log("callback oven");
+                    socket.emit('callback', {action: 'oven', 
+                                             unique_pie_id: pie.unique_pie_id,
+                                             heat_time: game.time.now})
+                    pie.destroy();
+                    pie_queue.splice(i, 1);
+                    update_pie_queue();
+                    arrayLength -= 1;
+                    
+                }
+                
+            }
+
+
+            // Oven heated?
+            if (!oven_warm && oven_warm_at != -1 && game.time.now > oven_warm_at)
+            {
+                oven_text.setText('');
+                oven_text.visible = false;
+                oven_warm = true;
+            } else if (!oven_warm && oven_text.valueOf().text != '') {
+                // Blink text 
+                timer += game.time.elapsed; // ms
+
+                if (timer >= 1000  && oven_text) {
+                    timer -= 1000;
+                    oven_text.visible = !oven_text.visible;
+                    console.log("warming: to: " + game.time.now+ " from: "+oven_warm_at);
+                }
+            }
+
+
+            if (oven_warm)
+            {
+                // Animate Pie Oven
+                var arrayLength = oven_queue.length;
+                for (var i = 0; i < arrayLength; i++) {
+                    pie = oven_queue[i];
+                    if (!pie)
+                        continue;
+                    // is baking
+                    if (pie.bake_time > game.time.now)
+                    {
+                        pie.baking = true;
+                        continue;
+                    }
+                    // it's done
+                    pie.visible = true;
+                    pie.x += 2;
+                    if (pie.x > 800)
+                    {
+                        pie.destroy();
+                        oven_queue.splice(i, 1);
+                        arrayLength -= 1;
+                        pie_count += 1;
+                        update_pie_queue();
+                    }
+                    
+                }
+            }
+        }
+
+   
+    };
+
+    </script>
+
+    </body>
+</html>
