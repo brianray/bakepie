@@ -1,5 +1,5 @@
 from flask import (Flask, render_template, request, send_from_directory)
-from flask_socketio import SocketIO, emit
+from .flask_socketio import SocketIO, emit
 import logging as log
 
 from jupy import root_dir
