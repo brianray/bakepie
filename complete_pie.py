@@ -123,6 +123,7 @@ class RaseberryPie(Pie):
 
 class FactoryConveyorBelt:
     "Handles holding state for pies and adding callbacks to handle operations"
+
     def __init__(self):
         self.pies = {}
         self.oven_heat_time = 10000
@@ -357,8 +358,22 @@ class JupyDisplay(base_class):
     def _repr_html_(self):
         return self.embed_code
 
-    
-jupyter = False    
+
+def check_install():
+    try:
+        import socketio
+        socketio.__version__
+    except Exception as e:
+        print(str(e))
+
+        # conda.cli.main('conda', 'install',  '-y', 'numpy')
+        # conda install -verbose -y -c conda-forge python-socketio=1.7.4
+        import os
+        os.system("conda install --verbose -y -c conda-forge python-socketio=1.7.4")
+
+check_install()
+
+jupyter = False
 try:
     __IPYTHON__
     jupyter = True
