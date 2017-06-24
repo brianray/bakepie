@@ -360,6 +360,7 @@ class JupyDisplay(base_class):
 
 
 def check_install():
+    import os
     try:
         import socketio
         socketio.__version__
@@ -368,8 +369,14 @@ def check_install():
 
         # conda.cli.main('conda', 'install',  '-y', 'numpy')
         # conda install -verbose -y -c conda-forge python-socketio=1.7.4
-        import os
-        os.system("conda install --verbose -y -c conda-forge python-socketio=1.7.4")
+        try:
+
+            os.system(
+                "conda install --verbose -y -c conda-forge python-socketio=1.7.4")
+        except Exception as e:
+            print(str(e))
+            os.system("pip install python-socketio")
+
 
 check_install()
 
