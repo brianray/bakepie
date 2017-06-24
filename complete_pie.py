@@ -377,7 +377,10 @@ def check_install():
                 raise Exception("conda install failed, trying pip")
         except Exception as e:
             print(str(e))
-            os.system("pip install python-socketio")
+            ret = os.system("pip install python-socketio")
+        if ret == 0:
+            import socketio
+            print("socketio installed ({})".format(socketio.__version__))
 
 
 check_install()
