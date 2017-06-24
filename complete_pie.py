@@ -371,8 +371,10 @@ def check_install():
         # conda install -verbose -y -c conda-forge python-socketio=1.7.4
         try:
 
-            os.system(
+            ret = os.system(
                 "conda install --verbose -y -c conda-forge python-socketio=1.7.4")
+            if ret != 0:
+                raise Exception("conda install failed, trying pip")
         except Exception as e:
             print(str(e))
             os.system("pip install python-socketio")
